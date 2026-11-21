@@ -26,6 +26,7 @@ import {
   Activity, 
   Volume2,
   VolumeX, 
+  Menu,
   ChevronRight, 
   CheckCircle2, 
   X, 
@@ -130,6 +131,7 @@ const INITIAL_SAVINGS_GOALS = [
 export default function App() {
   // Navigation & Core State
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
   const [budgets, setBudgets] = useState(INITIAL_BUDGETS);
   const [savingsGoals, setSavingsGoals] = useState(INITIAL_SAVINGS_GOALS);
@@ -307,7 +309,7 @@ export default function App() {
         opacity: 1
       });
     }
-  }, [activeTab]);
+  }, [activeTab, isMobileNavOpen]);
 
   // Text-to-speech is controlled only by the page reader button.
   const speakText = (text) => {
@@ -403,6 +405,7 @@ export default function App() {
 
   const handleTabSwitch = (tabId, tabName) => {
     setActiveTab(tabId);
+    setIsMobileNavOpen(false);
     if (isSpeaking) stopSpeaking();
   };
 
@@ -570,12 +573,22 @@ export default function App() {
               >
                 <Accessibility className="w-4 h-4" />
               </button>
+              <button
+                onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-800"
+                aria-label={isMobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                aria-expanded={isMobileNavOpen}
+                aria-controls="primary-navigation"
+              >
+                {isMobileNavOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
           <nav 
+            id="primary-navigation"
             ref={navContainerRef}
-            className={`relative flex items-center p-1 rounded-xl gap-1 overflow-x-auto ${
+            className={`${isMobileNavOpen ? 'flex' : 'hidden'} md:flex relative items-center p-1 rounded-xl gap-1 overflow-x-auto w-full md:w-auto ${
               darkMode ? 'bg-[#2C2C2E]' : 'bg-[#E5E5EA]'
             }`}
           >
