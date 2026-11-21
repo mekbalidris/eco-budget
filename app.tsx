@@ -145,7 +145,6 @@ export default function App() {
   const [fontSize, setFontSize] = useState('normal'); // 'normal' | 'large' | 'xlarge'
   const [reduceMotion, setReduceMotion] = useState(false);
   const [showVisualLabels, setShowVisualLabels] = useState(true);
-  const [audioVoiceEnabled, setAudioVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [availableVoices, setAvailableVoices] = useState([]);
 
@@ -163,8 +162,7 @@ export default function App() {
           storedHighContrast,
           storedFontSize,
           storedReduceMotion,
-          storedShowVisualLabels,
-          storedAudioVoiceEnabled
+          storedShowVisualLabels
         ] = await Promise.all([
           loadCollection('transactions'),
           loadCollection('budgets'),
@@ -174,8 +172,7 @@ export default function App() {
           loadSetting('highContrast'),
           loadSetting('fontSize'),
           loadSetting('reduceMotion'),
-          loadSetting('showVisualLabels'),
-          loadSetting('audioVoiceEnabled')
+          loadSetting('showVisualLabels')
         ]);
 
         if (cancelled) return;
@@ -198,7 +195,6 @@ export default function App() {
         if (storedFontSize) setFontSize(storedFontSize);
         if (typeof storedReduceMotion === 'boolean') setReduceMotion(storedReduceMotion);
         if (typeof storedShowVisualLabels === 'boolean') setShowVisualLabels(storedShowVisualLabels);
-        if (typeof storedAudioVoiceEnabled === 'boolean') setAudioVoiceEnabled(storedAudioVoiceEnabled);
         setIsDatabaseReady(true);
       } catch (error) {
         console.error('Failed to load EcoBudget database:', error);
@@ -241,8 +237,7 @@ export default function App() {
       saveSetting('highContrast', highContrast),
       saveSetting('fontSize', fontSize),
       saveSetting('reduceMotion', reduceMotion),
-      saveSetting('showVisualLabels', showVisualLabels),
-      saveSetting('audioVoiceEnabled', audioVoiceEnabled)
+      saveSetting('showVisualLabels', showVisualLabels)
     ]).catch((error) => console.error('Failed to save preferences:', error));
   }, [
     darkMode,
@@ -250,7 +245,6 @@ export default function App() {
     fontSize,
     reduceMotion,
     showVisualLabels,
-    audioVoiceEnabled,
     isDatabaseReady
   ]);
 
@@ -315,9 +309,9 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // Text-to-speech engine helper with direct forced trigger
-  const speakText = (text, forceSpeak = false) => {
-    if ((!audioVoiceEnabled && !forceSpeak) || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  // Text-to-speech is controlled only by the page reader button.
+  const speakText = (text) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     
     try {
       window.speechSynthesis.cancel(); // Stop current queue
@@ -368,9 +362,48 @@ export default function App() {
     }
   };
 
+  const getPageSpeechSummary = () => {
+    if (activeTab === 'transactions') {
+      const transactionList = filteredTransactions
+        .slice(0, 10)
+        .map((transaction) => `${transaction.description}, ${transaction.category}, ${transaction.amount.toFixed(2)} dollars`)
+        .join('. ');
+      return `Transactions page. ${filteredTransactions.length} transactions found. ${transactionList || 'No transactions found.'}`;
+    }
+
+    if (activeTab === 'budget') {
+      const budgetList = budgets
+        .map((budget) => {
+          const spent = transactions
+            .filter((transaction) => transaction.type === 'expense' && transaction.category === budget.category)
+            .reduce((sum, transaction) => sum + transaction.amount, 0);
+          return `${budget.category}: ${spent.toFixed(2)} dollars spent of ${budget.limit.toFixed(2)} dollars`;
+        })
+        .join('. ');
+      return `Budget Manager page. ${budgetList}`;
+    }
+
+    if (activeTab === 'savings') {
+      const goalList = savingsGoals
+        .map((goal) => `${goal.title}: ${goal.current.toFixed(2)} dollars saved of ${goal.target.toFixed(2)} dollars`)
+        .join('. ');
+      return `Savings Goals page. ${goalList || 'No savings goals found.'}`;
+    }
+
+    return `EcoBudget Financial Summary. Total Balance is ${metrics.totalBalance.toFixed(2)} dollars. Monthly spending is ${metrics.totalExpense.toFixed(2)} dollars. Total savings goals total ${metrics.totalSaved.toFixed(2)} dollars. Your budget health index is ${metrics.healthIndex} out of 100.`;
+  };
+
+  const togglePageReader = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+      return;
+    }
+    speakText(getPageSpeechSummary());
+  };
+
   const handleTabSwitch = (tabId, tabName) => {
     setActiveTab(tabId);
-    speakText(`Navigated to ${tabName}`);
+    if (isSpeaking) stopSpeaking();
   };
 
   // --- DERIVED METRICS ---
@@ -516,6 +549,14 @@ export default function App() {
 
             <div className="flex md:hidden items-center gap-2">
               <button
+                onClick={togglePageReader}
+                className={`p-2 rounded-lg ${isSpeaking ? 'bg-red-600 text-white' : 'bg-gray-200 dark:bg-gray-800'}`}
+                aria-label={isSpeaking ? 'Stop page reader' : 'Read page aloud'}
+                title={isSpeaking ? 'Stop reading' : 'Read page aloud'}
+              >
+                {isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
+              <button
                 onClick={() => setDarkMode(!darkMode)}
                 className="p-2 rounded-lg bg-gray-200 dark:bg-gray-800"
                 aria-label="Toggle Theme"
@@ -576,23 +617,21 @@ export default function App() {
           </nav>
 
           <div className="hidden md:flex items-center gap-2">
-            {isSpeaking && (
-              <button
-                onClick={stopSpeaking}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-600 text-white font-semibold text-xs shadow-md hover:bg-red-700 transition-all animate-pulse min-h-[44px]"
-                title="Stop Speech Output"
-              >
-                <VolumeX className="w-4 h-4" />
-                <span>Stop Voice Audio</span>
-              </button>
-            )}
+            <button
+              onClick={togglePageReader}
+              className={`p-2.5 rounded-xl border transition-all ${
+                isSpeaking
+                  ? 'bg-red-600 text-white border-red-500'
+                  : (darkMode ? 'bg-[#2C2C2E] border-[#3A3A3C] text-[#F2F2F7]' : 'bg-white border-[#E5E5EA] text-gray-700')
+              }`}
+              aria-label={isSpeaking ? 'Stop page reader' : 'Read page aloud'}
+              title={isSpeaking ? 'Stop reading' : 'Read page aloud'}
+            >
+              {isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
 
             <button
-              onClick={() => {
-                const nextMode = !darkMode;
-                setDarkMode(nextMode);
-                speakText(nextMode ? "Dark mode activated" : "Light mode activated");
-              }}
+              onClick={() => setDarkMode(!darkMode)}
               className={`p-2.5 rounded-xl border transition-all ${
                 darkMode ? 'bg-[#2C2C2E] border-[#3A3A3C] text-yellow-400' : 'bg-white border-[#E5E5EA] text-gray-700'
               }`}
@@ -617,14 +656,13 @@ export default function App() {
         </div>
 
         {isA11yMenuOpen && (
-          <div className={`mt-3 p-4 rounded-2xl max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-4 ${cardClass}`}>
+          <div className={`mt-3 p-4 rounded-2xl max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-4 ${cardClass}`}>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-2 opacity-70">Visual Contrast</label>
               <button
                 onClick={() => {
                   const val = !highContrast;
                   setHighContrast(val);
-                  speakText(val ? "High contrast enabled" : "High contrast disabled");
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border font-medium transition-colors ${
                   highContrast 
@@ -645,7 +683,6 @@ export default function App() {
                     key={sz}
                     onClick={() => {
                       setFontSize(sz);
-                      speakText(`Font size set to ${sz}`);
                     }}
                     className={`flex-1 py-2 rounded-lg font-bold border text-xs capitalize transition-colors ${
                       fontSize === sz 
@@ -665,7 +702,6 @@ export default function App() {
                 onClick={() => {
                   const val = !reduceMotion;
                   setReduceMotion(val);
-                  speakText(val ? "Animations disabled" : "Animations enabled");
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border font-medium transition-colors ${
                   reduceMotion 
@@ -684,7 +720,6 @@ export default function App() {
                 onClick={() => {
                   const val = !showVisualLabels;
                   setShowVisualLabels(val);
-                  speakText(val ? "Visual tags enabled" : "Visual tags disabled");
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border font-medium transition-colors ${
                   showVisualLabels 
@@ -697,41 +732,6 @@ export default function App() {
               </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2 opacity-70">Screen Audio Reader</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const nextVal = !audioVoiceEnabled;
-                    setAudioVoiceEnabled(nextVal);
-                    if (!nextVal) {
-                      stopSpeaking();
-                    } else if ('speechSynthesis' in window) {
-                      speakText("Audio reader activated. EcoBudget will read key actions and metrics aloud.");
-                    }
-                  }}
-                  className={`flex-1 flex items-center justify-between px-3 py-2.5 rounded-xl border font-medium transition-colors ${
-                    audioVoiceEnabled 
-                      ? 'bg-[#007AFF] text-white border-blue-400' 
-                      : 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-[#3A3A3C] dark:text-[#F2F2F7] dark:border-[#48484A] hover:bg-gray-200 dark:hover:bg-[#48484A]'
-                  }`}
-                >
-                  <span>{audioVoiceEnabled ? 'Voice ON' : 'Voice OFF'}</span>
-                  {audioVoiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                </button>
-
-                {isSpeaking && (
-                  <button
-                    onClick={stopSpeaking}
-                    className="px-3 py-2.5 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition-colors flex items-center gap-1"
-                    title="Stop Audio Speech"
-                  >
-                    <VolumeX className="w-4 h-4" />
-                    <span>Stop</span>
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
         )}
       </header>
@@ -748,30 +748,6 @@ export default function App() {
                 <p className="text-sm opacity-60">Real-time Financial Health Snapshot</p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      if (!audioVoiceEnabled) setAudioVoiceEnabled(true);
-                      const speechSummary = `EcoBudget Financial Summary. Total Balance is ${metrics.totalBalance.toFixed(2)} dollars. Monthly spending is ${metrics.totalExpense.toFixed(2)} dollars. Total savings goals total ${metrics.totalSaved.toFixed(2)} dollars. Your budget health index is ${metrics.healthIndex} out of 100.`;
-                      speakText(speechSummary, true);
-                    }}
-                    className="flex items-center gap-2 px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold shadow-md hover:bg-purple-700 active:scale-95 transition-all min-h-[44px]"
-                  >
-                    <Volume2 className="w-5 h-5" />
-                    <span>Read Summary Aloud</span>
-                  </button>
-
-                  {isSpeaking && (
-                    <button
-                      onClick={stopSpeaking}
-                      className="px-4 py-3 rounded-xl bg-red-600 text-white font-semibold shadow-md hover:bg-red-700 transition-all min-h-[44px]"
-                      title="Stop Voice Reader"
-                    >
-                      <VolumeX className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
 
                 <button
                   onClick={() => {
@@ -784,7 +760,6 @@ export default function App() {
                   <span>Quick Add Transaction</span>
                 </button>
               </div>
-            </div>
 
             <div 
               role="alert" 
