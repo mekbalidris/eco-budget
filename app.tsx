@@ -17,7 +17,7 @@ import {
   AlertTriangle, 
   TrendingUp, 
   TrendingDown, 
-  DollarSign, 
+  Banknote,
   ShieldCheck, 
   Sun, 
   Moon, 
@@ -102,7 +102,7 @@ function CategoryIcon({ category, className = "w-4 h-4" }) {
     case 'Income':
       return <Briefcase className={className} />;
     default:
-      return <DollarSign className={className} />;
+      return <Banknote className={className} />;
   }
 }
 
@@ -320,8 +320,8 @@ export default function App() {
 
       // Format text for natural pronunciation
       const cleanText = text
-        .replace(/\$/g, ' dollars ')
-        .replace(/(\d+)\.(\d{2})/g, '$1 dollars and $2 cents');
+        .replace(/\$/g, ' DA ')
+        .replace(/(\d+)\.(\d{2})/g, '$1 DA and $2 cents');
 
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = 'en-GB';
@@ -368,7 +368,7 @@ export default function App() {
     if (activeTab === 'transactions') {
       const transactionList = filteredTransactions
         .slice(0, 10)
-        .map((transaction) => `${transaction.description}, ${transaction.category}, ${transaction.amount.toFixed(2)} dollars`)
+        .map((transaction) => `${transaction.description}, ${transaction.category}, ${transaction.amount.toFixed(2)} DA`)
         .join('. ');
       return `Transactions page. ${filteredTransactions.length} transactions found. ${transactionList || 'No transactions found.'}`;
     }
@@ -379,7 +379,7 @@ export default function App() {
           const spent = transactions
             .filter((transaction) => transaction.type === 'expense' && transaction.category === budget.category)
             .reduce((sum, transaction) => sum + transaction.amount, 0);
-          return `${budget.category}: ${spent.toFixed(2)} dollars spent of ${budget.limit.toFixed(2)} dollars`;
+          return `${budget.category}: ${spent.toFixed(2)} DA spent of ${budget.limit.toFixed(2)} DA`;
         })
         .join('. ');
       return `Budget Manager page. ${budgetList}`;
@@ -387,12 +387,12 @@ export default function App() {
 
     if (activeTab === 'savings') {
       const goalList = savingsGoals
-        .map((goal) => `${goal.title}: ${goal.current.toFixed(2)} dollars saved of ${goal.target.toFixed(2)} dollars`)
+        .map((goal) => `${goal.title}: ${goal.current.toFixed(2)} DA saved of ${goal.target.toFixed(2)} DA`)
         .join('. ');
       return `Savings Goals page. ${goalList || 'No savings goals found.'}`;
     }
 
-    return `EcoBudget Financial Summary. Total Balance is ${metrics.totalBalance.toFixed(2)} dollars. Monthly spending is ${metrics.totalExpense.toFixed(2)} dollars. Total savings goals total ${metrics.totalSaved.toFixed(2)} dollars. Your budget health index is ${metrics.healthIndex} out of 100.`;
+    return `EcoBudget Financial Summary. Total Balance is ${metrics.totalBalance.toFixed(2)} DA. Monthly spending is ${metrics.totalExpense.toFixed(2)} DA. Total savings goals total ${metrics.totalSaved.toFixed(2)} DA. Your budget health index is ${metrics.healthIndex} out of 100.`;
   };
 
   const togglePageReader = () => {
@@ -491,7 +491,7 @@ export default function App() {
       return g;
     }));
 
-    showToast(`${transferType === 'deposit' ? 'Deposited' : 'Withdrew'} $${amt.toFixed(2)} for ${transferGoal.title}`);
+    showToast(`${transferType === 'deposit' ? 'Deposited' : 'Withdrew'} DA ${amt.toFixed(2)} for ${transferGoal.title}`);
     setTransferGoal(null);
     setTransferAmount('');
   };
@@ -803,11 +803,11 @@ export default function App() {
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-semibold uppercase tracking-wider opacity-60">Total Balance</span>
                   <div className="p-2 rounded-xl bg-blue-500/10 text-[#007AFF]">
-                    <DollarSign className="w-5 h-5" />
+                    <Banknote className="w-5 h-5" />
                   </div>
                 </div>
                 <div className="text-2xl font-extrabold tracking-tight">
-                  ${animBalance.toFixed(2)}
+                  DA {animBalance.toFixed(2)}
                 </div>
                 <div className="flex items-center gap-1.5 mt-2 text-xs text-emerald-500 font-medium">
                   <TrendingUp className="w-4 h-4" />
@@ -823,7 +823,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="text-2xl font-extrabold tracking-tight">
-                  ${animExpense.toFixed(2)}
+                  DA {animExpense.toFixed(2)}
                 </div>
                 <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-500 font-medium">
                   <TrendingDown className="w-4 h-4" />
@@ -839,7 +839,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="text-2xl font-extrabold tracking-tight">
-                  ${animSaved.toFixed(2)}
+                  DA {animSaved.toFixed(2)}
                 </div>
                 <div className="flex items-center gap-1.5 mt-2 text-xs text-emerald-500 font-medium">
                   <ShieldCheck className="w-4 h-4" />
@@ -911,7 +911,7 @@ export default function App() {
                       <div className={`font-extrabold text-sm ${
                         tx.type === 'income' ? 'text-emerald-500' : 'dark:text-gray-100 text-[#1C1C1E]'
                       }`}>
-                        {tx.type === 'income' ? '+' : '-'}${tx.amount.toFixed(2)}
+                        {tx.type === 'income' ? '+' : '-'}DA {tx.amount.toFixed(2)}
                       </div>
                     </div>
                   ))}
@@ -953,7 +953,7 @@ export default function App() {
                               </span>
                             )}
                           </div>
-                          <span className="opacity-70">${spent.toFixed(0)} / ${b.limit}</span>
+                          <span className="opacity-70">DA {spent.toFixed(0)} / DA {b.limit}</span>
                         </div>
 
                         <div className="w-full bg-gray-200 dark:bg-[#3A3A3C] h-2 rounded-full overflow-hidden">
@@ -1061,7 +1061,7 @@ export default function App() {
                         <td className={`py-4 px-3 text-right font-black text-sm ${
                           tx.type === 'income' ? 'text-[#34C759]' : 'dark:text-white text-gray-900'
                         }`}>
-                          {tx.type === 'income' ? '+' : '-'}${tx.amount.toFixed(2)}
+                          {tx.type === 'income' ? '+' : '-'}DA {tx.amount.toFixed(2)}
                         </td>
                         <td className="py-4 px-3 text-center">
                           <div className="flex items-center justify-center gap-2">
@@ -1138,12 +1138,12 @@ export default function App() {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs opacity-60">${remaining.toFixed(2)} remaining safe spend</p>
+                          <p className="text-xs opacity-60">DA {remaining.toFixed(2)} remaining safe spend</p>
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <div className="text-sm font-semibold">Limit: ${b.limit}</div>
+                        <div className="text-sm font-semibold">Limit: DA {b.limit}</div>
                         <input
                           type="number"
                           defaultValue={b.limit}
@@ -1155,7 +1155,7 @@ export default function App() {
 
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs font-semibold opacity-70">
-                        <span>Spent: ${spent.toFixed(2)}</span>
+                        <span>Spent: DA {spent.toFixed(2)}</span>
                         <span>{ratio.toFixed(0)}%</span>
                       </div>
                       <div className="w-full bg-gray-200 dark:bg-[#3A3A3C] h-3 rounded-full overflow-hidden">
@@ -1208,8 +1208,8 @@ export default function App() {
 
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs font-semibold">
-                          <span>Saved: ${goal.current.toFixed(2)}</span>
-                          <span className="opacity-70">${goal.target.toFixed(2)}</span>
+                          <span>Saved: DA {goal.current.toFixed(2)}</span>
+                          <span className="opacity-70">DA {goal.target.toFixed(2)}</span>
                         </div>
                         <div className="w-full bg-gray-200 dark:bg-[#3A3A3C] h-2.5 rounded-full overflow-hidden">
                           <div 
@@ -1290,7 +1290,7 @@ export default function App() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-70">Amount ($)</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-70">Amount (DA)</label>
                   <input
                     name="amount"
                     type="number"
@@ -1401,7 +1401,7 @@ export default function App() {
             <h3 className="font-bold text-lg capitalize">{transferType} for {transferGoal.title}</h3>
             <form onSubmit={handleGoalTransferSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-70">Transfer Amount ($)</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-70">Transfer Amount (DA)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -1469,7 +1469,7 @@ export default function App() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-70">Target ($)</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1 opacity-70">Target (DA)</label>
                   <input
                     name="target"
                     type="number"
